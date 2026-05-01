@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, useInView, AnimatePresence, Variants } from "framer-motion";
 import {
   Database,
   Map,
@@ -45,8 +45,7 @@ const LinkedInIcon = ({ size = 20, className = "" }: { size?: number; className?
 );
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
-
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 28 },
   visible: (i = 0) => ({
     opacity: 1,
