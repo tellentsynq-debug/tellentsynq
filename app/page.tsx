@@ -54,15 +54,18 @@ const fadeUp: Variants = {
   }),
 };
 
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.5, ease: "easeInOut" } },
-};
-
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.1 } },
 };
+
+// ─── Scroll helper ────────────────────────────────────────────────────────────
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
 
 // ─── Scroll Reveal Wrapper ────────────────────────────────────────────────────
 
@@ -109,7 +112,13 @@ function StaggerReveal({ children, className = "" }: { children: React.ReactNode
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const NAV_LINKS = ["About Us", "Services", "Insights", "Contact Us"];
+// Each nav label maps to a section id
+const NAV_LINKS: { label: string; sectionId: string }[] = [
+  { label: "About Us", sectionId: "about" },
+  { label: "Services", sectionId: "services" },
+  { label: "Insights", sectionId: "insights" },
+  { label: "Contact Us", sectionId: "contact" },
+];
 
 const STATS = [
   { value: "100", suffix: "+", label: "Clients Globally" },
@@ -161,12 +170,15 @@ const SERVICES = [
   },
 ];
 
-const CLIENTELE_TABS = [
+// Split into two rows: first 5, then remaining 5
+const CLIENTELE_TABS_ROW1 = [
   { label: "IT", icon: Monitor },
   { label: "Engineering", icon: Cog },
   { label: "Education", icon: GraduationCap },
   { label: "Construction", icon: HardHat },
   { label: "Oil, Gas & Energy", icon: Zap },
+];
+const CLIENTELE_TABS_ROW2 = [
   { label: "Healthcare", icon: Heart },
   { label: "Manufacturing", icon: BarChart2 },
   { label: "Supply Chain", icon: Truck },
@@ -325,6 +337,43 @@ function OutlineButton({
   );
 }
 
+// ─── Reusable Tab Row ─────────────────────────────────────────────────────────
+function TabRow({
+  tabs,
+  activeTab,
+  setActiveTab,
+}: {
+  tabs: { label: string; icon: React.ElementType }[];
+  activeTab: string;
+  setActiveTab: (label: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3 justify-center">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeTab === tab.label;
+        return (
+          <motion.button
+            key={tab.label}
+            onClick={() => setActiveTab(tab.label)}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ duration: 0.18 }}
+            className={`flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border transition-all duration-250 text-xs font-semibold ${
+              isActive
+                ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200"
+                : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+            }`}
+          >
+            <Icon size={22} strokeWidth={1.5} className={isActive ? "text-white" : "text-red-600"} />
+            <span>{tab.label}</span>
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -354,16 +403,16 @@ export default function Home() {
 
           <div className="hidden md:flex items-center gap-8">
             {NAV_LINKS.map((link) => (
-              <motion.a
-                key={link}
-                href="#"
+              <motion.button
+                key={link.label}
+                onClick={() => scrollToSection(link.sectionId)}
                 whileHover={{ color: "#dc2626" }}
                 transition={{ duration: 0.2 }}
-                className="text-gray-600 hover:text-red-600 font-medium text-sm relative group"
+                className="text-gray-600 hover:text-red-600 font-medium text-sm relative group bg-transparent border-none cursor-pointer"
               >
-                {link}
+                {link.label}
                 <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-red-600 group-hover:w-full transition-all duration-300 rounded-full" />
-              </motion.a>
+              </motion.button>
             ))}
             <motion.button
               whileHover={{ scale: 1.15, color: "#dc2626" }}
@@ -404,9 +453,16 @@ export default function Home() {
             >
               <div className="py-4 flex flex-col gap-4">
                 {NAV_LINKS.map((link) => (
-                  <a key={link} href="#" className="text-gray-700 hover:text-red-600 font-medium transition-colors">
-                    {link}
-                  </a>
+                  <button
+                    key={link.label}
+                    onClick={() => {
+                      scrollToSection(link.sectionId);
+                      setMenuOpen(false);
+                    }}
+                    className="text-left text-gray-700 hover:text-red-600 font-medium transition-colors bg-transparent border-none cursor-pointer"
+                  >
+                    {link.label}
+                  </button>
                 ))}
               </div>
             </motion.div>
@@ -415,7 +471,7 @@ export default function Home() {
       </motion.nav>
 
       {/* ── HERO ───────────────────────────────────────────────────────────── */}
-      <section className="relative bg-white py-32 px-6 text-center overflow-hidden">
+      <section id="about" className="relative bg-white py-32 px-6 text-center overflow-hidden">
         {/* Gradient mesh background */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-gradient-radial from-red-50 via-transparent to-transparent opacity-60 blur-3xl" />
@@ -489,7 +545,7 @@ export default function Home() {
       </section>
 
       {/* ── SERVICES ───────────────────────────────────────────────────────── */}
-      <section className="bg-gray-50/70 py-24 px-6">
+      <section id="services" className="bg-gray-50/70 py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <Reveal className="text-center mb-16">
             <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 uppercase mb-4">OUR SERVICES</h2>
@@ -519,7 +575,7 @@ export default function Home() {
       </section>
 
       {/* ── CLIENTELE ──────────────────────────────────────────────────────── */}
-      <section className="bg-white py-24 px-6">
+      <section id="clientele" className="bg-white py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <Reveal className="text-center mb-14">
             <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 uppercase mb-4">OUR CLIENTELE</h2>
@@ -529,8 +585,33 @@ export default function Home() {
           </Reveal>
 
           <Reveal delay={1}>
+            {/* Row 1 — 5 items */}
+            <div className="flex flex-wrap gap-3 justify-center mb-3">
+              {CLIENTELE_TABS_ROW1.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.label;
+                return (
+                  <motion.button
+                    key={tab.label}
+                    onClick={() => setActiveTab(tab.label)}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ duration: 0.18 }}
+                    className={`flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border transition-all duration-250 text-xs font-semibold ${
+                      isActive
+                        ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+                    }`}
+                  >
+                    <Icon size={22} strokeWidth={1.5} className={isActive ? "text-white" : "text-red-600"} />
+                    <span>{tab.label}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+            {/* Row 2 — 5 items */}
             <div className="flex flex-wrap gap-3 justify-center mb-10">
-              {CLIENTELE_TABS.map((tab) => {
+              {CLIENTELE_TABS_ROW2.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.label;
                 return (
@@ -577,7 +658,7 @@ export default function Home() {
       </section>
 
       {/* ── INSIGHTS ───────────────────────────────────────────────────────── */}
-      <section className="bg-gray-50/70 py-24 px-6">
+      <section id="insights" className="bg-gray-50/70 py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <Reveal className="text-center mb-14">
             <h2 className="text-4xl font-extrabold text-gray-900 mb-4">Latest Insights</h2>
@@ -847,7 +928,6 @@ export default function Home() {
                   <MapPin size={13} className="text-red-500 flex-shrink-0" /> A-105 Titanium Business Park
                 </span>
               </div>
-              {/* LinkedIn icon – custom SVG, matches Lucide style */}
               <motion.a
                 href="#"
                 aria-label="LinkedIn"
