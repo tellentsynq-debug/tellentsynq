@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   title: "TellentSynq — AI-Powered Talent Recruitment",
   description: "AI-powered offshore recruitment & automation platform redefining people & culture for the future of work.",
   icons: {
-    icon: "/weblogo.png",
-    shortcut: "/weblogo.png",
-    apple: "/weblogo.png",
+    icon: "/tellentsynq_logo.jpg",
+    shortcut: "/tellentsynq_logo.jpg",
+    apple:"/tellentsynq_logo.jpg",
   },
 };
 
