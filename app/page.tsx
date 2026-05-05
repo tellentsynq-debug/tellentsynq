@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion, useInView, AnimatePresence, Variants } from "framer-motion";
+import emailjs from "@emailjs/browser";
 import {
   Database,
   Map,
@@ -28,9 +29,28 @@ import {
   ArrowRight,
   Menu,
   X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
-// LinkedIn SVG icon (custom, no extra dependency)
+// ─── EmailJS Configuration ────────────────────────────────────────────────────
+// 1. Go to https://www.emailjs.com and create a free account
+// 2. Create a new Email Service (connect your Gmail/Outlook) → copy the Service ID
+// 3. Create an Email Template → copy the Template ID
+//    In the template body use these variables:
+//      {{from_name}}, {{from_email}}, {{company}}, {{role}}, {{service}}, {{message}}
+// 4. Go to Account → API Keys → copy your Public Key
+// Then replace the three placeholder strings below with your real values.
+
+const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!;
+const EMAILJS_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!;
+const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!;
+
+// The email address that will RECEIVE all contact form submissions
+const RECEIVER_EMAIL = "abhisheksinghaitd@gmail.com";
+
+// LinkedIn SVG icon
 const LinkedInIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
     width={size}
@@ -62,13 +82,10 @@ const stagger = {
 // ─── Scroll helper ────────────────────────────────────────────────────────────
 function scrollToSection(id: string) {
   const el = document.getElementById(id);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ─── Scroll Reveal Wrapper ────────────────────────────────────────────────────
-
 function Reveal({
   children,
   delay = 0,
@@ -111,7 +128,6 @@ function StaggerReveal({ children, className = "" }: { children: React.ReactNode
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-
 const NAV_LINKS: { label: string; sectionId: string }[] = [
   { label: "About Us", sectionId: "about" },
   { label: "Services", sectionId: "services" },
@@ -169,14 +185,12 @@ const SERVICES = [
   },
 ];
 
-const CLIENTELE_TABS_ROW1 = [
+const CLIENTELE_TABS = [
   { label: "IT", icon: Monitor },
   { label: "Engineering", icon: Cog },
   { label: "Education", icon: GraduationCap },
   { label: "Construction", icon: HardHat },
   { label: "Oil, Gas & Energy", icon: Zap },
-];
-const CLIENTELE_TABS_ROW2 = [
   { label: "Healthcare", icon: Heart },
   { label: "Manufacturing", icon: BarChart2 },
   { label: "Supply Chain", icon: Truck },
@@ -292,24 +306,48 @@ const FOOTER_COMPANY = ["About Us", "Case Studies", "Careers", "Press", "Partner
 const FOOTER_RESOURCES = ["Insights", "Documentation", "API", "Support", "Status"];
 const FOOTER_LEGAL = ["Privacy Policy", "Terms of Service", "Cookie Policy", "GDPR", "Security"];
 
-// ─── Button Components ────────────────────────────────────────────────────────
+// ─── Form State Type ──────────────────────────────────────────────────────────
+interface FormState {
+  name: string;
+  email: string;
+  company: string;
+  role: string;
+  service: string;
+  message: string;
+}
 
+const INITIAL_FORM: FormState = {
+  name: "",
+  email: "",
+  company: "",
+  role: "",
+  service: "",
+  message: "",
+};
+
+// ─── Button Components ────────────────────────────────────────────────────────
 function PrimaryButton({
   children,
   className = "",
   onClick,
+  type = "button",
+  disabled = false,
 }: {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
+  type?: "button" | "submit";
+  disabled?: boolean;
 }) {
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.04, boxShadow: "0 8px 30px rgba(220,38,38,0.35)" }}
-      whileTap={{ scale: 0.97 }}
+      type={type}
+      disabled={disabled}
+      whileHover={!disabled ? { scale: 1.04, boxShadow: "0 8px 30px rgba(220,38,38,0.35)" } : {}}
+      whileTap={!disabled ? { scale: 0.97 } : {}}
       transition={{ duration: 0.2, ease: "easeInOut" }}
-      className={`flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors duration-200 ${className}`}
+      className={`flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${className}`}
     >
       {children}
     </motion.button>
@@ -339,15 +377,12 @@ function OutlineButton({
 function WorkspaceIllustration() {
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-      {/* Real photo from Unsplash — diverse professional team in a modern office */}
       <img
         src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
         alt="TellentSynq team collaborating in a modern workspace"
         className="w-full h-full object-cover"
       />
-      {/* Subtle gradient overlay for polish */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-      {/* Badge overlay */}
       <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
         <div className="bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
@@ -368,21 +403,64 @@ function WorkspaceIllustration() {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-
 export default function Home() {
   const [activeTab, setActiveTab] = useState("IT");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // ── Contact Form State ────────────────────────────────────────────────────
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSend = async () => {
+    // Basic validation
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      setErrorMsg("Please fill in Name, Email, and Message before sending.");
+      setSendStatus("error");
+      return;
+    }
+
+    setSendStatus("sending");
+    setErrorMsg("");
+
+    // Template parameters — these must match the variable names in your
+    // EmailJS template exactly. E.g. in the template body write {{from_name}}.
+    const templateParams = {
+      from_name: form.name,
+      from_email: form.email,
+      company: form.company || "—",
+      role: form.role || "—",
+      service: form.service || "—",
+      message: form.message,
+      to_email: RECEIVER_EMAIL,   // passed as {{to_email}} in template
+      reply_to: form.email,       // makes "Reply" in your inbox go back to sender
+    };
+
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      );
+      setSendStatus("success");
+      setForm(INITIAL_FORM); // clear the form on success
+    } catch (err: unknown) {
+      console.error("EmailJS error:", err);
+      setErrorMsg("Something went wrong. Please try again or email us directly.");
+      setSendStatus("error");
+    }
+  };
+
   return (
     <>
       {/* ── NAVBAR ─────────────────────────────────────────────────────────── */}
-      {/*
-        FIX: The navbar is now OUTSIDE <main> and is a direct child of <body>.
-        The root cause was overflow-x-hidden on <main> — any ancestor with
-        overflow:hidden breaks position:sticky. Moving the nav outside <main>
-        (and removing overflow-x-hidden from <main>) resolves this entirely.
-        overflow-x-hidden is handled on <body> via layout.tsx instead.
-      */}
       <motion.nav
         initial={{ y: -70, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -470,10 +548,6 @@ export default function Home() {
       </motion.nav>
 
       {/* ── PAGE CONTENT ───────────────────────────────────────────────────── */}
-      {/*
-        overflow-x-hidden removed from here — it was breaking sticky.
-        It's now set on <body> in layout.tsx via className="overflow-x-hidden".
-      */}
       <main className="font-sans bg-white text-gray-900">
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
@@ -581,7 +655,7 @@ export default function Home() {
 
         {/* ── CLIENTELE ────────────────────────────────────────────────────── */}
         <section id="clientele" className="bg-white py-24 px-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <Reveal className="text-center mb-14">
               <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 uppercase mb-4">OUR CLIENTELE</h2>
               <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
@@ -590,8 +664,8 @@ export default function Home() {
             </Reveal>
 
             <Reveal delay={1}>
-              <div className="flex flex-wrap gap-3 justify-center mb-3">
-                {CLIENTELE_TABS_ROW1.map((tab) => {
+              <div className="grid grid-cols-5 gap-3 mb-10">
+                {CLIENTELE_TABS.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.label;
                   return (
@@ -601,37 +675,14 @@ export default function Home() {
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
                       transition={{ duration: 0.18 }}
-                      className={`flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border transition-all duration-250 text-xs font-semibold ${
+                      className={`flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl border transition-all duration-250 text-xs font-semibold text-center min-h-[90px] ${
                         isActive
                           ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200"
                           : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
                       }`}
                     >
                       <Icon size={22} strokeWidth={1.5} className={isActive ? "text-white" : "text-red-600"} />
-                      <span>{tab.label}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap gap-3 justify-center mb-10">
-                {CLIENTELE_TABS_ROW2.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.label;
-                  return (
-                    <motion.button
-                      key={tab.label}
-                      onClick={() => setActiveTab(tab.label)}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.96 }}
-                      transition={{ duration: 0.18 }}
-                      className={`flex flex-col items-center gap-2 px-5 py-4 rounded-2xl border transition-all duration-250 text-xs font-semibold ${
-                        isActive
-                          ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200"
-                          : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
-                      }`}
-                    >
-                      <Icon size={22} strokeWidth={1.5} className={isActive ? "text-white" : "text-red-600"} />
-                      <span>{tab.label}</span>
+                      <span className="leading-tight">{tab.label}</span>
                     </motion.button>
                   );
                 })}
@@ -765,25 +816,22 @@ export default function Home() {
         </section>
 
         {/* ── WHY PARTNER ──────────────────────────────────────────────────── */}
-        <section className="bg-gray-50/70 py-24 px-6">
+        <section className="bg-gray-50/70 py-24 px-10 md:px-16 lg:px-24">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <Reveal>
+            <Reveal className="px-4 md:px-8">
               <h2 className="text-4xl font-extrabold text-gray-900 mb-10 leading-tight">
                 Why Partner<br />With Us?
               </h2>
-              <StaggerReveal className="flex flex-col gap-4">
+              <StaggerReveal className="flex flex-col gap-5">
                 {WHY_PARTNER.map((item, i) => (
                   <motion.li
                     key={item}
                     variants={fadeUp}
                     custom={i}
-                    className="flex items-center gap-3 text-gray-700 text-sm list-none"
+                    className="flex items-center gap-4 text-gray-700 text-base font-medium list-none"
                   >
-                    <motion.span
-                      whileHover={{ scale: 1.2 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <CheckCircle className="text-red-600 flex-shrink-0" size={20} strokeWidth={2} />
+                    <motion.span whileHover={{ scale: 1.2 }} transition={{ duration: 0.2 }}>
+                      <CheckCircle className="text-red-600 flex-shrink-0" size={22} strokeWidth={2} />
                     </motion.span>
                     {item}
                   </motion.li>
@@ -791,8 +839,7 @@ export default function Home() {
               </StaggerReveal>
             </Reveal>
 
-            {/* ── WORKSPACE ILLUSTRATION (replaces grey placeholder) ── */}
-            <Reveal delay={2}>
+            <Reveal delay={2} className="px-4 md:px-8">
               <WorkspaceIllustration />
             </Reveal>
           </div>
@@ -809,6 +856,7 @@ export default function Home() {
             </Reveal>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-14 items-start">
+              {/* ── Left: contact info ── */}
               <Reveal>
                 <h3 className="text-xl font-bold text-gray-900 mb-8">Contact Information</h3>
                 <div className="flex flex-col gap-7">
@@ -836,60 +884,144 @@ export default function Home() {
                 </div>
               </Reveal>
 
+              {/* ── Right: contact form ── */}
               <Reveal delay={1}>
                 <div className="flex flex-col gap-5">
+                  {/* Name + Email */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { label: "Name", placeholder: "Your full name", type: "text", required: true },
-                      { label: "Email", placeholder: "your.email@company.com", type: "email", required: true },
-                    ].map((f) => (
-                      <div key={f.label}>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          {f.label} {f.required && <span className="text-red-500">*</span>}
-                        </label>
-                        <input
-                          type={f.type}
-                          placeholder={f.placeholder}
-                          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all duration-200"
-                        />
-                      </div>
-                    ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        placeholder="Your full name"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all duration-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="your.email@company.com"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all duration-200"
+                      />
+                    </div>
                   </div>
+
+                  {/* Company + Role */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { label: "Company", placeholder: "Your company name" },
-                      { label: "Role", placeholder: "Your job title" },
-                    ].map((f) => (
-                      <div key={f.label}>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">{f.label}</label>
-                        <input
-                          type="text"
-                          placeholder={f.placeholder}
-                          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all duration-200"
-                        />
-                      </div>
-                    ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">Company</label>
+                      <input
+                        type="text"
+                        name="company"
+                        value={form.company}
+                        onChange={handleChange}
+                        placeholder="Your company name"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all duration-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
+                      <input
+                        type="text"
+                        name="role"
+                        value={form.role}
+                        onChange={handleChange}
+                        placeholder="Your job title"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all duration-200"
+                      />
+                    </div>
                   </div>
+
+                  {/* Service Interest */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">Service Interest</label>
-                    <select className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 bg-white transition-all duration-200">
+                    <select
+                      name="service"
+                      value={form.service}
+                      onChange={handleChange}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 bg-white transition-all duration-200"
+                    >
                       <option value="">Select a service you&apos;re interested in</option>
                       {SERVICES.map((s) => (
                         <option key={s.title} value={s.title}>{s.title}</option>
                       ))}
                     </select>
                   </div>
+
+                  {/* Message */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                       Message <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       rows={5}
+                      name="message"
+                      value={form.message}
+                      onChange={handleChange}
                       placeholder="Tell us about your requirements..."
                       className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-50 resize-y transition-all duration-200"
                     />
                   </div>
-                  <PrimaryButton className="w-fit">Send Message</PrimaryButton>
+
+                  {/* ── Status feedback ── */}
+                  <AnimatePresence mode="wait">
+                    {sendStatus === "success" && (
+                      <motion.div
+                        key="success"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm font-medium"
+                      >
+                        <CheckCircle2 size={18} className="flex-shrink-0" />
+                        Message sent successfully! We&apos;ll get back to you soon.
+                      </motion.div>
+                    )}
+                    {sendStatus === "error" && (
+                      <motion.div
+                        key="error"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm font-medium"
+                      >
+                        <AlertCircle size={18} className="flex-shrink-0" />
+                        {errorMsg}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* ── Send button ── */}
+                  <PrimaryButton
+                    className="w-fit"
+                    onClick={handleSend}
+                    disabled={sendStatus === "sending" || sendStatus === "success"}
+                  >
+                    {sendStatus === "sending" ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Sending…
+                      </>
+                    ) : sendStatus === "success" ? (
+                      <>
+                        <CheckCircle2 size={16} />
+                        Sent!
+                      </>
+                    ) : (
+                      "Send Message"
+                    )}
+                  </PrimaryButton>
                 </div>
               </Reveal>
             </div>
