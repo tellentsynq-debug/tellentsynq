@@ -664,29 +664,31 @@ export default function Home() {
             </Reveal>
 
             <Reveal delay={1}>
-              <div className="grid grid-cols-5 gap-3 mb-10">
-                {CLIENTELE_TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.label;
-                  return (
-                    <motion.button
-                      key={tab.label}
-                      onClick={() => setActiveTab(tab.label)}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.96 }}
-                      transition={{ duration: 0.18 }}
-                      className={`flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-2xl border transition-all duration-250 text-xs font-semibold text-center min-h-[90px] ${
-                        isActive
-                          ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200"
-                          : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
-                      }`}
-                    >
-                      <Icon size={22} strokeWidth={1.5} className={isActive ? "text-white" : "text-red-600"} />
-                      <span className="leading-tight">{tab.label}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-10 place-items-center">
+  {CLIENTELE_TABS.map((tab) => {
+    const Icon = tab.icon;
+    const isActive = activeTab === tab.label;
+    return (
+      <motion.button
+        key={tab.label}
+        onClick={() => setActiveTab(tab.label)}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ duration: 0.18 }}
+        className={`flex flex-col items-center justify-center w-full max-w-[110px] gap-2 px-3 py-3 rounded-2xl border transition-all duration-250 text-[11px] font-semibold text-center min-h-[70px] sm:min-h-[90px] ${
+          isActive
+            ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200"
+            : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+        }`}
+      >
+        <Icon size={20} strokeWidth={1.5} className={isActive ? "text-white" : "text-red-600"} />
+        <span className="leading-tight break-words text-center">
+          {tab.label}
+        </span>
+      </motion.button>
+    );
+  })}
+</div>
             </Reveal>
 
             <Reveal delay={2}>
